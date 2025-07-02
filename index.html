@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vue.js Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.2.47/dist/vue.global.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .sidebar {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .chart-container {
+            height: 250px;
+        }
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                left: -300px;
+                z-index: 50;
+            }
+            .sidebar.active {
+                left: 0;
+            }
+            .overlay {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background-color: rgba(0,0,0,0.5);
+                z-index: 40;
+            }
+            .overlay.active {
+                display: block;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <button @click="toggleSidebar" class="md:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-indigo-600 text-white">
+            <i class="fas fa-bars"></i>
+        </button>
+        
+        <div @click="toggleSidebar" :class="{'active': sidebarActive}" class="overlay"></div>
+        
+        <aside :class="{'active': sidebarActive}" class="sidebar bg-gray-900 text-white w-64 fixed h-full overflow-y-auto">
+            <div class="p-4 flex items-center justify-between border-b border-gray-700">
+                <h1 class="text-xl font-bold">VueDash</h1>
+                <button @click="toggleSidebar" class="md:hidden p-1 rounded-lg hover:bg-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="p-4 border-b border-gray-700">
+                <div class="flex items-center space-x-3">
+                    <img src="https://randomuser.me/api/portraits/women/44.jpg" alt="User" class="w-10 h-10 rounded-full">
+                    <div>
+                        <p class="font-medium">Sarah Johnson</p>
+                        <p class="text-gray-400 text-sm">Admin</p>
+                    </div>
+                </div>
+            </div>
+            
+            <nav class="p-4">
+                <ul class="space-y-2">
+                    <li v-for="item in menuItems" :key="item.name">
+                        <a :href="item.link" 
+                           class="flex items-center p-2 rounded-lg hover:bg-gray-700 transition"
+                           :class="{'bg-indigo-600': activeMenu === item.name}"
+                           @click.prevent="setActiveMenu(item.name)">
+                            <i :class="item.icon" class="mr-3"></i>
+                            <span>{{ item.name }}</span>
+                            <span v-if="item.notification" class="ml-auto bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                                {{ item.notification }}
+                            </span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            
+            <div class="p-4 mt-auto">
+                <div class="bg-gray-800 rounded-lg p-3">
+                    <h3 class="text-sm font-medium mb-2">Storage</h3>
+                    <div class="h-2 bg-gray-700 rounded-full mb-2">
+                        <div class="h-2 bg-indigo-500 rounded-full" style="width: 65%"></div>
+                    </div>
+                    <p class="text-xs text-gray-400">65% of 100GB used</p>
+                </div>
+            </div>
+        </aside>
+        
+        <main class="ml-0 md:ml-64 min-h-screen bg-gray-100">
+            <header class="bg-white shadow-sm p-4 flex items-center justify-between">
+                <h2 class="text-xl font-semibold text-gray-800">{{ activeMenu }}</h2>
+                
+                <div class="flex items-center space-x-4">
+                    <div class="relative">
+                        <button @click="toggleSearch" class="p-2 rounded-full hover:bg-gray-100">
+                            <i class="fas fa-search text-gray-500"></i>
+                        </button>
+                        <div v-if="showSearch" class="absolute right-0 mt-2 w-64 bg-white rounded-md shadow-lg z-10 p-2">
+                            <input type="text" placeholder="Search..." class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                    </div>
+                    
+                    <button class="p-2 rounded-full hover:bg-gray-100 relative">
+                        <i class="fas fa-bell text-gray-500"></i>
+                        <span class="absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full"></span>
+                    </button>
+                    
+                    <div class="flex items-center space-x-2">
+                        <img src="https://randomuser.me/api/portraits/women/44.jpg" alt="User" class="w-8 h-8 rounded-full">
+                        <span class="hidden md:inline text-sm">Sarah Johnson</span>
+                    </div>
+                </div>
+            </header>
+            
+            <div class="p-4 md:p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <div v-for="stat in stats" :key="stat.title" 
+                         class="bg-white rounded-lg shadow p-6 transition duration-300 card-hover">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-500 text-sm">{{ stat.title }}</p>
+                                <h3 class="text-2xl font-bold">{{ stat.value }}</h3>
+                            </div>
+                            <div :class="stat.bgColor" class="p-3 rounded-full">
+                                <i :class="stat.icon" class="text-white"></i>
+                            </div>
+                        </div>
+                        <p class="text-sm mt-2" :class="stat.trendColor">
+                            <i :class="stat.trendIcon"></i> {{ stat.trend }}% from last month
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                    <div class="bg-white rounded-lg shadow p-6 lg:col-span-2">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="font-semibold">Revenue Overview</h3>
+                            <select class="border rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option>Last 7 days</option>
+                                <option>Last 30 days</option>
+                                <option selected>Last 90 days</option>
+                            </select>
+                        </div>
+                        <div class="chart-container">
+                            <canvas ref="lineChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <h3 class="font-semibold mb-4">Traffic Sources</h3>
+                        <div class="chart-container">
+                            <canvas ref="pieChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-lg shadow overflow-hidden">
+                        <div class="p-6 border-b">
+                            <h3 class="font-semibold">Recent Orders</h3>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200">
+                                    <tr v-for="order in recentOrders" :key="order.id" class="hover:bg-gray-50">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">#{{ order.id }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ order.customer }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span :class="getStatusClass(order.status)" class="px-2 py-1 text-xs rounded-full">
+                                                {{ order.status }}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${{ order.amount }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="p-4 border-t text-center">
+                            <a href="#" class="text-indigo-600 hover:text-indigo-800 text-sm font-medium">View all orders</a>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-lg shadow overflow-hidden">
+                        <div class="p-6 border-b">
+                            <h3 class="font-semibold">Top Products</h3>
+                        </div>
+                        <div class="divide-y divide-gray-200">
+                            <div v-for="product in topProducts" :key="product.id" class="p-4 flex items-center">
+                                <img :src="product.image" :alt="product.name" class="w-12 h-12 rounded-md object-cover">
+                                <div class="ml-4 flex-1">
+                                    <h4 class="text-sm font-medium">{{ product.name }}</h4>
+                                    <p class="text-xs text-gray-500">{{ product.category }}</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-sm font-medium">${{ product.price }}</p>
+                                    <p class="text-xs text-gray-500">{{ product.sales }} sales</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-4 border-t text-center">
+                            <a href="#" class="text-indigo-600 hover:text-indigo-800 text-sm font-medium">View all products</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const { createApp, ref, onMounted } = Vue;
+        
+        createApp({
+            setup() {
+                const menuItems = ref([
+                    { name: 'Dashboard', icon: 'fas fa-home', link: '#', notification: 0 },
+                    { name: 'Analytics', icon: 'fas fa-chart-line', link: '#', notification: 0 },
+                    { name: 'Projects', icon: 'fas fa-folder', link: '#', notification: 3 },
+                    { name: 'Calendar', icon: 'fas fa-calendar', link: '#', notification: 0 },
+                    { name: 'Messages', icon: 'fas fa-envelope', link: '#', notification: 5 },
+                    { name: 'Team', icon: 'fas fa-users', link: '#', notification: 0 },
+                    { name: 'Settings', icon: 'fas fa-cog', link: '#', notification: 0 }
+                ]);
+                
+                const activeMenu = ref('Dashboard');
+                const sidebarActive = ref(false);
+                const showSearch = ref(false);
+                
+                const stats = ref([
+                    { 
+                        title: 'Total Revenue', 
+                        value: '$24,780', 
+                        icon: 'fas fa-dollar-sign', 
+                        bgColor: 'bg-green-500',
+                        trend: 12.5,
+                        trendIcon: 'fas fa-arrow-up',
+                        trendColor: 'text-green-500'
+                    },
+                    { 
+                        title: 'New Customers', 
+                        value: '1,245', 
+                        icon: 'fas fa-user-plus', 
+                        bgColor: 'bg-blue-500',
+                        trend: 8.2,
+                        trendIcon: 'fas fa-arrow-up',
+                        trendColor: 'text-blue-500'
+                    },
+                    { 
+                        title: 'Pending Orders', 
+                        value: '42', 
+                        icon: 'fas fa-shopping-cart', 
+                        bgColor: 'bg-yellow-500',
+                        trend: -3.1,
+                        trendIcon: 'fas fa-arrow-down',
+                        trendColor: 'text-yellow-500'
+                    },
+                    { 
+                        title: 'Active Users', 
+                        value: '856', 
+                        icon: 'fas fa-users', 
+                        bgColor: 'bg-purple-500',
+                        trend: 5.7,
+                        trendIcon: 'fas fa-arrow-up',
+                        trendColor: 'text-purple-500'
+                    }
+                ]);
+                
+                const recentOrders = ref([
+                    { id: 45678, customer: 'John Smith', status: 'Completed', amount: 125.00 },
+                    { id: 45677, customer: 'Emma Johnson', status: 'Processing', amount: 89.50 },
+                    { id: 45676, customer: 'Michael Brown', status: 'Shipped', amount: 235.75 },
+                    { id: 45675, customer: 'Sarah Davis', status: 'Completed', amount: 56.20 },
+                    { id: 45674, customer: 'Robert Wilson', status: 'Pending', amount: 178.90 }
+                ]);
+                
+                const topProducts = ref([
+                    { id: 1, name: 'Wireless Headphones', category: 'Electronics', price: 99.99, sales: 245, image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8aGVhZHBob25lc3xlbnwwfHwwfHx8MA%3D%3D&auto=format&fit=crop&w=500&q=60' },
+                    { id: 2, name: 'Smart Watch', category: 'Electronics', price: 199.99, sales: 189, image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8c21hcnQlMjB3YXRjaHxlbnwwfHwwfHx8MA%3D%3D&auto=format&fit=crop&w=500&q=60' },
+                    { id: 3, name: 'Running Shoes', category: 'Sports', price: 79.99, sales: 156, image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8cnVubmluZyUyMHNob2VzfGVufDB8fDB8fHww&auto=format&fit=crop&w=500&q=60' },
+                    { id: 4, name: 'Coffee Maker', category: 'Home', price: 49.99, sales: 132, image: 'https://images.unsplash.com/photo-1556911463-a8e4d51c8c24?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8Y29mZmVlJTIwbWFrZXJ8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=500&q=60' }
+                ]);
+                
+                const lineChart = ref(null);
+                const pieChart = ref(null);
+                
+                const setActiveMenu = (menu) => {
+                    activeMenu.value = menu;
+                    if (window.innerWidth < 768) {
+                        sidebarActive.value = false;
+                    }
+                };
+                
+                const toggleSidebar = () => {
+                    sidebarActive.value = !sidebarActive.value;
+                };
+                
+                const toggleSearch = () => {
+                    showSearch.value = !showSearch.value;
+                };
+                
+                const getStatusClass = (status) => {
+                    switch(status) {
+                        case 'Completed': return 'bg-green-100 text-green-800';
+                        case 'Processing': return 'bg-blue-100 text-blue-800';
+                        case 'Shipped': return 'bg-purple-100 text-purple-800';
+                        case 'Pending': return 'bg-yellow-100 text-yellow-800';
+                        default: return 'bg-gray-100 text-gray-800';
+                    }
+                };
+                
+                const initCharts = () => {
+                    const lineCtx = lineChart.value.getContext('2d');
+                    new Chart(lineCtx, {
+                        type: 'line',
+                        data: {
+                            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'],
+                            datasets: [{
+                                label: 'Revenue',
+                                data: [5000, 8000, 6500, 9000, 12000, 15000, 14000, 16000, 18000],
+                                borderColor: '#6366F1',
+                                backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                                tension: 0.3,
+                                fill: true
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    display: false
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true
+                                }
+                            }
+                        }
+                    });
+                    
+                    const pieCtx = pieChart.value.getContext('2d');
+                    new Chart(pieCtx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['Direct', 'Organic', 'Referral', 'Social'],
+                            datasets: [{
+                                data: [35, 25, 20, 20],
+                                backgroundColor: [
+                                    '#6366F1',
+                                    '#10B981',
+                                    '#F59E0B',
+                                    '#EC4899'
+                                ],
+                                borderWidth: 0
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'right'
+                                }
+                            },
+                            cutout: '70%'
+                        }
+                    });
+                };
+                
+                onMounted(() => {
+                    initCharts();
+                    
+                    window.addEventListener('resize', () => {
+                        if (window.innerWidth >= 768) {
+                            sidebarActive.value = false;
+                        }
+                    });
+                });
+                
+                return {
+                    menuItems,
+                    activeMenu,
+                    sidebarActive,
+                    showSearch,
+                    stats,
+                    recentOrders,
+                    topProducts,
+                    lineChart,
+                    pieChart,
+                    setActiveMenu,
+                    toggleSidebar,
+                    toggleSearch,
+                    getStatusClass
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
